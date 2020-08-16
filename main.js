@@ -11,7 +11,7 @@ const log=require('electron-log')
 
 
 //Set enviroment
-process.env.NODE_ENV='developement'
+process.env.NODE_ENV='production'
 
 const isDev=process.env.NODE_ENV!=='production'?true:false
 const isMac=process.platform==='darwin'?true:false
@@ -31,14 +31,14 @@ const createMainWindow=()=>{
             worldSafeExecuteJavaScript:true,
             nodeIntegration:true
         },
-        icon:'./assets/icons/photo.ico',
+        icon:__dirname+'/assets/icons/icon.ico',
         resizable: isDev ? true : false
     })
     if(isDev){
         win.webContents.openDevTools()
     }
 
-    win.loadFile('./app/index.html')
+    win.loadFile('app/index.html')
 }
 const createAboutWindow=()=>{
     aboutWin=new BrowserWindow({
@@ -49,13 +49,13 @@ const createAboutWindow=()=>{
             worldSafeExecuteJavaScript:true,
             nodeIntegration:true
         },
-        icon:'assets/icons/photo.ico',
+        icon:__dirname+'/assets/icons/icon.ico',
         resizable:false
     })
 
     
 
-    aboutWin.loadFile('./app/about.html')
+    aboutWin.loadFile('app/about.html')
 }
 //WINDOWS
 
