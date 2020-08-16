@@ -1,17 +1,31 @@
-const {app, BrowserWindow, Menu, globalShortcut}=require('electron')
+const {app, BrowserWindow, Menu, ipcMain,shell}=require('electron')
 
-//set enviroment
-process.env.NODE_ENV='development'
+const path=require('path')
+const os=require('os')
+const imagemin=require('imagemin')
+const imageminMozjpeg=require('imagemin-mozjpeg')
+const imageminPngquant=require('imagemin-pngquant')
+const slash=require('slash')
+const log=require('electron-log')
+
+
+
+//Set enviroment
+process.env.NODE_ENV='developement'
 
 const isDev=process.env.NODE_ENV!=='production'?true:false
 const isMac=process.platform==='darwin'?true:false
 
-let win
+//Set enviroment
+
+//WINDOWS
+let win,
+    aboutWin
 
 const createMainWindow=()=>{
     win=new BrowserWindow({
         title:'ImageShrink',
-        width:500,
+        width:isDev?800:500,
         height:600,
         webPreferences:{
             worldSafeExecuteJavaScript:true,
@@ -20,8 +34,54 @@ const createMainWindow=()=>{
         icon:'./assets/icons/photo.ico',
         resizable: isDev ? true : false
     })
+    if(isDev){
+        win.webContents.openDevTools()
+    }
 
     win.loadFile('./app/index.html')
+}
+const createAboutWindow=()=>{
+    aboutWin=new BrowserWindow({
+        title:'About ImageShrink',
+        width:300,
+        height:300,
+        webPreferences:{
+            worldSafeExecuteJavaScript:true,
+            nodeIntegration:true
+        },
+        icon:'assets/icons/photo.ico',
+        resizable:false
+    })
+
+    
+
+    aboutWin.loadFile('./app/about.html')
+}
+//WINDOWS
+
+ipcMain.on('image:minimize',(e, opt)=>{
+    opt.dest=path.join(os.homedir(),'imageshrink')
+    shrinkImage(opt)
+
+})
+
+const shrinkImage=async({imgPath, quality, dest})=>{
+    try{
+        const pngQuality=quality/100;
+        const files=await imagemin([slash(imgPath)],{
+            destination:dest,
+            plugins:[
+                imageminMozjpeg({quality}),
+                imageminPngquant({quality:[pngQuality,pngQuality]})
+            ]
+        })
+        log.info(files)
+        shell.openPath(dest)
+
+        win.webContents.send('image:done',)
+    }catch(err){
+        log.error(err)
+    }
 }
 
 app.on('window-all-closed',()=>{
@@ -43,10 +103,6 @@ app.on('ready',()=>{
     const mainMenu=Menu.buildFromTemplate(menu)
     Menu.setApplicationMenu(mainMenu)
 
-    globalShortcut.register('CmdOrCtrl+R', ()=>win.reload())
-    globalShortcut.register(isMac?'Command+Alt+I':'Ctrl+Shift+I', ()=>win.toggleDevTools())
-
-
     win.on('ready',()=>{
         win=null
     })
@@ -54,17 +110,35 @@ app.on('ready',()=>{
 })
 
 const menu=[
-    ...(isMac?[{role:'appMenu'}]:[]),
-    {
-        label:'File',
+    ...(isMac?[{
+        label:app.name,
         submenu:[
             {
-                label:'Quit',
-                
-                accelerator:'CmdOrCtrl+W',
-                click:()=>app.quit()
-                
+                label:'About',
+                click:createAboutWindow
             }
         ]
-    }
+    }]:[{
+        label:'About',
+        submenu:[
+            {
+                label:'About',
+                click:createAboutWindow
+            }
+        ]
+    }]),
+    {
+        role:'fileMenu'
+    },
+    ...(isDev?[
+        {
+            label:'Developer',
+            submenu:[
+                {role:'reload'},
+                {role:'forcereload'},
+                {type:'separator'},
+                {role:'toggledevtools'},
+            ]
+        }
+    ]:[])
 ]
